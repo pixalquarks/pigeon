@@ -2,34 +2,8 @@ import firebase from 'firebase/compat/app';
 import "firebase/compat/firestore";
 import './style.css';
 
-import firebaseConfig from './config';
-import Controller, {EventType, MouseButtonType} from './controller';
-
-// 
-
-const servers = {
-  iceServers: [
-    {
-      urls: ['stun:stun.l.google.com:19302', 'stun:stun1.l.google.com:19302', 'stun:stun2.l.google.com:19302', 'stun:stun3.l.google.com:19302', 'stun:stun4.l.google.com:19302', "stun:openrelay.metered.ca:80"]
-    },
-    {
-      urls: "turn:openrelay.metered.ca:80",
-      username: "openrelayproject",
-      credential: "openrelayproject",
-    },
-    {
-      urls: "turn:openrelay.metered.ca:443",
-      username: "openrelayproject",
-      credential: "openrelayproject",
-    },
-    {
-      urls: "turn:openrelay.metered.ca:443?transport=tcp",
-      username: "openrelayproject",
-      credential: "openrelayproject",
-    },
-  ],
-  iceCandidatePoolSize: 10,
-}
+import firebaseConfig, { servers, displayMediaOptions } from './config';
+import { Receiver, Sender } from './handlers';
 
 const app = firebase.initializeApp(firebaseConfig);
 const db = app.firestore();
@@ -42,14 +16,6 @@ const joinCallElem = document.getElementById("joinCall") as HTMLButtonElement;
 // const leaveCallElem = document.getElementById("leaveCall") as HTMLButtonElement; 
 const callInput = document.getElementById("callInput") as HTMLInputElement;
 
-// Options for getDisplayMedia()
-
-const displayMediaOptions = {
-  video: {
-    cursor: "always"
-  },
-  audio: false
-} as MediaStreamConstraints;
 
 stopElem?.addEventListener("click", function(_evt) {
   stopCapture();
@@ -63,7 +29,6 @@ function stopCapture() {
 const pc = new RTCPeerConnection(servers);
 let stream = new MediaStream();
 let datachannel: RTCDataChannel | null = null;
-let controller: Controller | null = null;
 
 if (startElem != null) {
   console.log("assign");
@@ -91,12 +56,12 @@ if (createCallElem != null) {
     event.candidate && offerCandidate.add(event.candidate.toJSON());
   };
 
-  controller = new Controller();
+  const receiver = new Receiver();
 
   datachannel = pc.createDataChannel("keys");
   console.log(datachannel);
 
-  datachannel.onmessage = handleMessageReceived;
+  datachannel.onmessage = receiver.handleMessageReceived;
   datachannel.onopen = () => {
     console.log("datachannel open");
   }
@@ -156,10 +121,11 @@ if (joinCallElem != null) {
 
   pc.ondatachannel = event => {
     console.log("Data Channel");
-    datachannel = event.channel;
+    const sender = new Sender(event.channel, videoElem);
+    document.onkeydown = sender.handlekeydown;
+    videoElem.onclick = sender.handleMouseClick;
+    videoElem.onauxclick = sender.handleMouseClick;
   }
-
-  document.onkeydown = handlekeydown;
 
   videoElem.srcObject = stream;
 
@@ -187,29 +153,4 @@ if (joinCallElem != null) {
     })
   })
 }
-}
-
-function handleMessageReceived(event: MessageEvent) {
-  const data = JSON.parse(event.data);
-  console.log(data);
-  if (controller != null) {
-    controller.send(data);
-  }
-}
-
-function handlekeydown(event: KeyboardEvent) {
-  console.log(event.key);
-  const data = {
-    type: EventType.KeyPress,
-    key: event.key,
-    X: -1,
-    Y: -1,
-    MKey: MouseButtonType.None
-  }
-  sendMessage(JSON.stringify(data));
-}
-
-function sendMessage(msg: string) {
-  console.log("sending message");
-  datachannel?.send(msg);
 }
