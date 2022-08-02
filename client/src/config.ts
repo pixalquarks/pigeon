@@ -8,4 +8,35 @@ const firebaseConfig = {
     measurementId: import.meta.env.VITE_MEASUREMENT_ID
 };
 
+export const servers = {
+    iceServers: [
+      {
+        urls: ['stun:stun.l.google.com:19302', 'stun:stun1.l.google.com:19302', 'stun:stun2.l.google.com:19302', 'stun:stun3.l.google.com:19302', 'stun:stun4.l.google.com:19302', "stun:openrelay.metered.ca:80"]
+      },
+      {
+        urls: "turn:openrelay.metered.ca:80",
+        username: "openrelayproject",
+        credential: "openrelayproject",
+      },
+      {
+        urls: "turn:openrelay.metered.ca:443",
+        username: "openrelayproject",
+        credential: "openrelayproject",
+      },
+      {
+        urls: "turn:openrelay.metered.ca:443?transport=tcp",
+        username: "openrelayproject",
+        credential: "openrelayproject",
+      },
+    ],
+    iceCandidatePoolSize: 10,
+  }
+
+export const displayMediaOptions = {
+video: {
+    cursor: "always"
+},
+audio: false
+} as MediaStreamConstraints;
+
 export default firebaseConfig;
